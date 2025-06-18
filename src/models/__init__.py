@@ -88,27 +88,26 @@ class StressPredictionModel:
         
         return model_scores
     
-    def predict_stress_level(self, features: np.ndarray) -> Dict[str, Any]:
-        """Predict stress level and provide confidence scores"""
+    def predict_stress_level(self, features: dict) -> Dict[str, Any]:
+        """Predict stress level from feature dictionary"""
         if self.best_model is None:
-            raise ValueError("Model not trained yet. Please train the model first.")
+            raise ValueError("Model not trained yet.")
+        
+        # Convert to array in correct feature order
+        input_vector = []
+        for feature in self.feature_names:
+            input_vector.append(features.get(feature, 0))
         
         # Predict stress level
-        prediction = self.best_model.predict(features)[0]
-        probabilities = self.best_model.predict_proba(features)[0]
-        
-        # Get feature importance (if available)
-        feature_importance = None
-        if hasattr(self.best_model, 'feature_importances_'):
-            feature_importance = dict(zip(self.feature_names, 
-                                        self.best_model.feature_importances_))
+        prediction = self.best_model.predict([input_vector])[0]
+        probabilities = self.best_model.predict_proba([input_vector])[0]
         
         return {
             'stress_level': self.stress_levels[prediction],
             'confidence': max(probabilities),
-            'probabilities': dict(zip(self.stress_levels, probabilities)),
-            'feature_importance': feature_importance
+            'probabilities': dict(zip(self.stress_levels, probabilities))
         }
+    
     
     def analyze_stress_factors(self, features: np.ndarray) -> Dict[str, Any]:
         """Analyze key stress factors contributing to the prediction"""
