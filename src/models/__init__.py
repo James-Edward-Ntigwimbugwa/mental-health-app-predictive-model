@@ -19,6 +19,7 @@ class StressPredictionModel:
     """Advanced AI model for stress level prediction and analysis"""
     
     def __init__(self):
+
         self.logger = logging.getLogger(__name__)
         self.models = {
             'random_forest': RandomForestClassifier(
