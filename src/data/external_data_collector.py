@@ -503,3 +503,161 @@ class ExternalDataCollector:
         """Map work stress related features"""
         if 'workload_rating' in df.columns:
             return 6 - df['workload_rating']  # Invert so higher = more stress
+        
+    def _map_work_stress(self, df: pd.DataFrame) -> pd.Series:
+        """Map work stress related features"""
+        if 'workload_rating' in df.columns:
+            return 6 - df['workload_rating']  # Invert so higher = more stress
+        elif 'patient_load_stress' in df.columns:
+            return df['patient_load_stress']
+        elif 'deadline_pressure' in df.columns:
+            return df['deadline_pressure']
+        elif 'academic_pressure' in df.columns:
+            return df['academic_pressure']
+        elif 'childcare_stress' in df.columns:
+            return df['childcare_stress']
+        else:
+            return np.random.randint(1, 6, len(df))
+    
+    def _map_financial_stress(self, df: pd.DataFrame) -> pd.Series:
+        """Map financial stress related features"""
+        if 'financial_stress' in df.columns:
+            return df['financial_stress']
+        elif 'salary_satisfaction' in df.columns:
+            return 6 - df['salary_satisfaction']  # Invert so higher = more stress
+        elif 'financial_security' in df.columns:
+            return 6 - df['financial_security']  # Invert so higher = more stress
+        elif 'income_level' in df.columns:
+            # Map income level to financial stress
+            income_mapping = {'Low': 5, 'Medium': 3, 'High': 2}
+            return df['income_level'].map(income_mapping).fillna(3)
+        else:
+            return np.random.randint(1, 6, len(df))
+    
+    def _map_health_status(self, df: pd.DataFrame) -> pd.Series:
+        """Map health status related features"""
+        if 'health_status' in df.columns:
+            return df['health_status']
+        elif 'chronic_health_conditions' in df.columns:
+            # Convert binary to scale (invert so higher = better health)
+            return 5 - (df['chronic_health_conditions'] * 2)
+        elif 'chronic_conditions' in df.columns:
+            # Convert count to scale
+            return (5 - df['chronic_conditions'].clip(0, 4)).clip(1, 5)
+        elif 'physical_symptoms' in df.columns:
+            # Convert symptom count to health status
+            return (5 - (df['physical_symptoms'] / 2)).clip(1, 5)
+        else:
+            return np.random.randint(1, 6, len(df))
+    
+    def _map_exercise(self, df: pd.DataFrame) -> pd.Series:
+        """Map exercise frequency features"""
+        if 'exercise_frequency' in df.columns:
+            return df['exercise_frequency']
+        elif 'physical_activity' in df.columns:
+            return df['physical_activity']
+        else:
+            return np.random.randint(0, 7, len(df))
+    
+    def _map_substance_use(self, df: pd.DataFrame) -> pd.Series:
+        """Map substance use related features"""
+        if 'substance_use_coping' in df.columns:
+            return df['substance_use_coping'] * 3  # Convert binary to scale
+        elif 'alcohol_consumption' in df.columns:
+            # Map alcohol consumption to numeric scale
+            alcohol_mapping = {'None': 0, 'Light': 1, 'Moderate': 2, 'Heavy': 3}
+            mapped_values = df['alcohol_consumption'].map(alcohol_mapping)
+            return mapped_values.fillna(1)
+        elif 'alcohol_frequency' in df.columns:
+            # Map frequency to numeric scale
+            freq_mapping = {'Never': 0, 'Rarely': 1, 'Sometimes': 2, 'Often': 3}
+            mapped_values = df['alcohol_frequency'].map(freq_mapping)
+            return mapped_values.fillna(1)
+        elif 'smoking_status' in df.columns:
+            # Map smoking status to numeric scale
+            smoking_mapping = {'Never': 0, 'Former': 1, 'Current': 2}
+            mapped_values = df['smoking_status'].map(smoking_mapping)
+            return mapped_values.fillna(0)
+        else:
+            return np.random.randint(0, 4, len(df))
+    
+    def _map_mental_health_history(self, df: pd.DataFrame) -> pd.Series:
+        """Map mental health history features"""
+        if 'mental_health_history' in df.columns:
+            return df['mental_health_history']
+        elif 'therapy_history' in df.columns:
+            return df['therapy_history']
+        elif 'therapy_attendance' in df.columns:
+            return df['therapy_attendance']
+        elif 'medication_usage' in df.columns:
+            return df['medication_usage']
+        else:
+            return np.random.choice([0, 1], len(df), p=[0.7, 0.3])
+    
+    def save_datasets(self, output_dir: str = "data/raw") -> Dict[str, str]:
+        """Save all individual datasets and combined dataset"""
+        import os
+        
+        # Create output directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
+        
+        saved_files = {}
+        
+        # Save individual datasets
+        datasets = self.collect_kaggle_mental_health_datasets()
+        dataset_names = [
+            'workplace_stress', 'student_stress', 'general_population_stress',
+            'healthcare_worker_stress', 'tech_worker_stress', 'family_stress'
+        ]
+        
+        for dataset, name in zip(datasets, dataset_names):
+            filename = f"{name}_dataset.csv"
+            filepath = os.path.join(output_dir, filename)
+            dataset.to_csv(filepath, index=False)
+            saved_files[name] = filepath
+            self.logger.info(f"Saved {name} dataset: {filepath}")
+        
+        # Save Gemini-inspired dataset
+        gemini_data = self.collect_gemini_mental_health_data()
+        if gemini_data is not None:
+            gemini_filepath = os.path.join(output_dir, "digital_wellness_dataset.csv")
+            gemini_data.to_csv(gemini_filepath, index=False)
+            saved_files['digital_wellness'] = gemini_filepath
+            self.logger.info(f"Saved digital wellness dataset: {gemini_filepath}")
+        
+        # Save combined dataset
+        try:
+            combined_df = self.combine_all_datasets()
+            combined_filepath = os.path.join(output_dir, "combined_mental_health_dataset.csv")
+            combined_df.to_csv(combined_filepath, index=False)
+            saved_files['combined'] = combined_filepath
+            self.logger.info(f"Saved combined dataset: {combined_filepath}")
+        except Exception as e:
+            self.logger.error(f"Error saving combined dataset: {e}")
+        
+        return saved_files
+    
+    def get_dataset_summary(self) -> Dict[str, Any]:
+        """Get summary statistics of all datasets"""
+        try:
+            combined_df = self.combine_all_datasets()
+            
+            summary = {
+                'total_samples': len(combined_df),
+                'datasets_included': combined_df['dataset_source'].value_counts().to_dict(),
+                'stress_level_distribution': combined_df['stress_level'].value_counts().to_dict(),
+                'age_distribution': {
+                    'mean': combined_df['age'].mean(),
+                    'std': combined_df['age'].std(),
+                    'min': combined_df['age'].min(),
+                    'max': combined_df['age'].max()
+                },
+                'gender_distribution': combined_df['gender'].value_counts().to_dict(),
+                'missing_values': combined_df.isnull().sum().to_dict()
+            }
+            
+            return summary
+            
+        except Exception as e:
+            self.logger.error(f"Error generating dataset summary: {e}")
+            return {}

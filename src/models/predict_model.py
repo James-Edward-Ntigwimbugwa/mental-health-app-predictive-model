@@ -30,6 +30,15 @@ class StressPredictor:
         except Exception as e:
             logger.error(f'Error loading model: {e}')
             raise
+
+    def debug_features(self):
+
+        """Debug method to check feature alignment"""
+
+        print(f"Model expects {len(self.feature_names)} features:")
+        for i, feature in enumerate(self.feature_names):
+            print(f"  {i+1:2d}. {feature}")
+        return self.feature_names
     
     def predict_stress(self, features: dict) -> dict:
         """Predict stress level and generate recommendations"""
@@ -79,14 +88,20 @@ class StressPredictor:
                 input_vector.append(0)
         
         return np.array([input_vector])
-
 def main():
-    """Run sample prediction"""
+    """Run sample prediction with feature debugging"""
+    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    logging.basicConfig(level=logging.INFO, format=log_fmt)
+    
     logger.info('Running stress prediction')
     
     predictor = StressPredictor()
     
-    # Sample user data
+    # DEBUG: Print expected features
+    print("\n=== DEBUGGING FEATURES ===")
+    expected_features = predictor.debug_features()
+    
+    # Original user data
     user_data = {
         'age': 35,
         'sleep_quality': 3,
@@ -101,16 +116,47 @@ def main():
         'dataset_source_workplace': 1
     }
     
-    result = predictor.predict_stress(user_data)
+    print(f"\nProvided {len(user_data)} features:")
+    for i, (feature, value) in enumerate(user_data.items()):
+        print(f"  {i+1:2d}. {feature} = {value}")
     
-    # Print comprehensive report
-    print("\n" + "="*80)
-    print(result['comprehensive_report'])
-    print("="*80)
+    # Check for mismatches
+    provided_set = set(user_data.keys())
+    expected_set = set(expected_features)
     
-    logger.info('Prediction complete')
-
-if __name__ == '__main__':
-    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    logging.basicConfig(level=logging.INFO, format=log_fmt)
-    main()
+    missing = expected_set - provided_set
+    extra = provided_set - expected_set
+    
+    if missing:
+        print(f"\nMISSING FEATURES: {missing}")
+        print("Adding missing features with default value 0")
+        for feature in missing:
+            user_data[feature] = 0
+    
+    if extra:
+        print(f"\nEXTRA FEATURES: {extra}")
+        print("Removing extra features")
+        for feature in extra:
+            del user_data[feature]
+    
+    print(f"\nFinal user_data has {len(user_data)} features")
+    print("=" * 30)
+    
+    try:
+        result = predictor.predict_stress(user_data)
+        
+        # Print comprehensive report
+        print("\n" + "="*80)
+        print(result['comprehensive_report'])
+        print("="*80)
+        
+        logger.info('Prediction complete')
+        
+    except Exception as e:
+        logger.error(f'Prediction failed: {e}')
+        print(f"\nERROR: {e}")
+        
+        # Additional debugging
+        input_vector = predictor._format_input(user_data)
+        print(f"Input vector shape: {input_vector.shape}")
+        print(f"Expected features: {len(expected_features)}")
