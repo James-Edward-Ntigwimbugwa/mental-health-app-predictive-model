@@ -1,61 +1,58 @@
 import logging
-import traceback
-from functools import wraps
-from flask import jsonify, request
-from typing import Dict, Any
-import time
+import sys
+from datetime import datetime
 
-def setup_logging(log_level: str = 'INFO'):
+def setup_logging(log_level='INFO'):
     """Setup logging configuration"""
-    logging.basicConfig(
-        level=getattr(logging, log_level.upper()),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    
+    # Convert string level to logging constant
+    level_map = {
+        'DEBUG': logging.DEBUG,
+        'INFO': logging.INFO,
+        'WARNING': logging.WARNING,
+        'ERROR': logging.ERROR,
+        'CRITICAL': logging.CRITICAL
+    }
+    
+    level = level_map.get(log_level.upper(), logging.INFO)
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
     )
-
-def handle_errors(f):
-    """Decorator to handle errors and return consistent error responses"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except ValueError as e:
-            logging.error(f"Validation error: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': 'Validation error',
-                'details': str(e)
-            }), 400
-        except Exception as e:
-            logging.error(f"Internal server error: {str(e)}")
-            logging.error(traceback.format_exc())
-            return jsonify({
-                'success': False,
-                'error': 'Internal server error',
-                'details': str(e) if logging.getLogger().level <= logging.DEBUG else None
-            }), 500
-    return decorated_function
-
-def validate_request_data(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Validate and clean request data"""
-    required_fields = [
-        'age', 'gender_Male', 'sleep_quality', 'health_status',
-        'mental_health_history', 'exercise_frequency', 'substance_use',
-        'social_support', 'work_stress', 'financial_stress'
-    ]
     
-    # Check required fields
-    missing_fields = [field for field in required_fields if field not in data]
-    if missing_fields:
-        raise ValueError(f"Missing required fields: {missing_fields}")
+    # Setup root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
     
-    # Set default values for optional fields
-    if 'dataset_source_workplace' not in data:
-        data['dataset_source_workplace'] = 1
+    # Remove existing handlers to avoid duplicates
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
     
-    return data
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(level)
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+    
+    # Suppress some noisy third-party loggers
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
+    logging.getLogger('requests').setLevel(logging.WARNING)
+    
+    logging.info(f"Logging setup complete - Level: {log_level}")
 
-def log_request():
-    """Log incoming requests"""
-    logging.info(f"Request: {request.method} {request.path} from {request.remote_addr}")
-    if request.is_json:
-        logging.debug(f"Request data: {request.get_json()}")
+def log_request_info(request):
+    """Log information about incoming requests"""
+    logging.info(f"Request: {request.method} {request.path}")
+    if request.get_json():
+        logging.debug(f"Request data keys: {list(request.get_json().keys())}")
+
+def log_prediction_result(result):
+    """Log prediction results (without sensitive data)"""
+    if isinstance(result, dict):
+        stress_level = result.get('stress_level', 'unknown')
+        confidence = result.get('confidence', 0)
+        logging.info(f"Prediction result: {stress_level} (confidence: {confidence:.2f})")
+    else:
+        logging.info(f"Prediction completed")

@@ -68,124 +68,27 @@ feature_names = [
     'workload_rating', 'relationship_satisfaction', 'financial_stress'
 ]
 
-# Solution recommendations database
-solutions_db = {
-    'Low': {
-        'message': 'Your stress levels are well-managed! Keep up the good work.',
-        'recommendations': [
-            'Continue your current healthy habits',
-            'Consider sharing your stress management techniques with others',
-            'Maintain regular check-ins with yourself to monitor stress levels'
-        ],
-        'priority': 'maintenance'
-    },
-    'Moderate': {
-        'message': 'You have manageable stress levels, but there\'s room for improvement.',
-        'recommendations': [
-            'Establish a consistent sleep schedule (7-9 hours)',
-            'Incorporate 30 minutes of daily exercise',
-            'Practice deep breathing exercises for 10 minutes daily',
-            'Limit caffeine intake, especially in the afternoon',
-            'Schedule regular social activities with friends/family',
-            'Consider time management techniques to reduce workload pressure'
-        ],
-        'priority': 'improvement'
-    },
-    'High': {
-        'message': 'Your stress levels are elevated and need attention.',
-        'recommendations': [
-            'Prioritize 7-9 hours of quality sleep nightly',
-            'Implement stress-reduction techniques like meditation or yoga',
-            'Consider reducing work hours or delegating tasks if possible',
-            'Limit screen time, especially before bedtime',
-            'Engage in regular physical activity (even 20-minute walks help)',
-            'Seek support from friends, family, or support groups',
-            'Practice mindfulness and relaxation techniques',
-            'Consider professional counseling if stress persists'
-        ],
-        'priority': 'urgent'
-    },
-    'Severe': {
-        'message': 'Your stress levels are critically high. Immediate action is recommended.',
-        'recommendations': [
-            'URGENT: Consider speaking with a healthcare professional or therapist',
-            'Implement immediate stress relief: deep breathing, progressive muscle relaxation',
-            'Prioritize sleep - aim for 8+ hours with good sleep hygiene',
-            'Reduce workload immediately - delegate, postpone non-essential tasks',
-            'Eliminate or significantly reduce caffeine and alcohol',
-            'Engage in daily physical activity, even light walking',
-            'Practice meditation or mindfulness for at least 15 minutes daily',
-            'Connect with supportive friends and family members',
-            'Consider stress management workshops or courses',
-            'If experiencing thoughts of self-harm, contact emergency services immediately'
-        ],
-        'priority': 'critical'
-    }
-}
-
-# Create personalized solution generator
-def generate_personalized_solutions(prediction, feature_values):
-    """Generate personalized solutions based on prediction and input features"""
-    base_solutions = solutions_db[prediction]['recommendations'].copy()
-    personalized = []
-    
-    # Analyze specific issues based on feature values
-    sleep_hours, work_hours, exercise_min, social_int, caffeine, screen_time, meditation, workload, relationship, financial = feature_values
-    
-    if sleep_hours < 6:
-        personalized.append("PRIORITY: Increase sleep to at least 7 hours - your current sleep is critically low")
-    elif sleep_hours < 7:
-        personalized.append("Focus on getting 7-8 hours of sleep instead of your current amount")
-    
-    if work_hours > 10:
-        personalized.append("Consider reducing work hours - working 10+ hours daily significantly increases stress")
-    
-    if exercise_min < 30:
-        personalized.append("Increase daily exercise - aim for at least 30 minutes of physical activity")
-    
-    if caffeine > 3:
-        personalized.append("Reduce caffeine intake - you're consuming more than the recommended amount")
-    
-    if screen_time > 8:
-        personalized.append("Limit screen time to reduce eye strain and improve sleep quality")
-    
-    if meditation < 10:
-        personalized.append("Start with 10-15 minutes of daily meditation or mindfulness practice")
-    
-    if workload > 7:
-        personalized.append("Address high workload through time management, delegation, or discussing with supervisor")
-    
-    if relationship < 5:
-        personalized.append("Focus on improving relationships - consider couples counseling or communication workshops")
-    
-    if financial > 7:
-        personalized.append("Address financial stress through budgeting, financial counseling, or debt management")
-    
-    return personalized + base_solutions
-
 # Model performance metrics (calculated on test set)
 test_accuracy = model.score(X_test_scaled, y_test)
 feature_importance = dict(zip(feature_names, model.feature_importances_))
 
-# Create the complete model package
+# Create the complete model package WITHOUT function references
 stress_model_package = {
     'model': model,
     'scaler': scaler,
     'feature_names': feature_names,
-    'solutions_database': solutions_db,
-    'solution_generator': generate_personalized_solutions,
     'model_info': {
         'model_type': 'RandomForestClassifier',
         'training_date': datetime.now().isoformat(),
         'test_accuracy': test_accuracy,
         'feature_importance': feature_importance,
         'stress_levels': ['Low', 'Moderate', 'High', 'Severe'],
-        'version': '1.0'
+        'version': '2.0'
     },
     'usage_instructions': {
         'input_format': 'List or array of 10 numeric values in this order: ' + ', '.join(feature_names),
         'prediction_method': 'Use model.predict() on scaled input',
-        'solution_method': 'Call solution_generator(prediction, input_features)'
+        'note': 'Use AIStressSolutionGenerator class for solutions instead of saved function'
     }
 }
 
@@ -218,11 +121,11 @@ print(f"\nExample Input: {dict(zip(feature_names, example_input))}")
 print(f"Predicted Stress Level: {prediction}")
 print(f"Prediction Confidence: {max(probability):.3f}")
 
-# Generate solutions
-personalized_solutions = loaded_model['solution_generator'](prediction, example_input)
-print(f"\nPersonalized Recommendations:")
-for i, solution in enumerate(personalized_solutions[:5], 1):  # Show first 5
-    print(f"{i}. {solution}")
+print(f"\nModel info:")
+print(f"Version: {loaded_model['model_info']['version']}")
+print(f"Training date: {loaded_model['model_info']['training_date']}")
+print(f"Test accuracy: {loaded_model['model_info']['test_accuracy']:.3f}")
+print(f"Stress levels: {loaded_model['model_info']['stress_levels']}")
 
-print(f"\nStress level message: {loaded_model['solutions_database'][prediction]['message']}")
-print(f"Priority level: {loaded_model['solutions_database'][prediction]['priority'].upper()}")
+print("\nNote: Use AIStressSolutionGenerator class for generating personalized solutions.")
+print("The function references have been removed to avoid pickle loading issues.")
